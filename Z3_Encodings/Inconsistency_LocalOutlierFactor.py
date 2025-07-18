@@ -7,14 +7,15 @@ def Min(values):
     else:
         return If(values[0] < Min(values[1:]), values[0], Min(values[1:]))
 
-def pairwise_knn(X, contamination):
+def pairwise_knn():
     s = Solver()
     num_points = 4
+    contamination = 0.1
     X = [[Real(f'X_{i}_{j}') for j in range(1)] for i in range(num_points)]
     for i in range(num_points):
         for j in range(1):
             s.add(And(X[i][j] >= -100, X[i][j] <= 100))
-    # X = [[-1], [2], [100], [3]]
+
     distances = [[Real(f'distance_{i}_{j}') for j in range(num_points)] for i in range(num_points)]
 
     for i in range(num_points):
@@ -24,7 +25,6 @@ def pairwise_knn(X, contamination):
             
             s.add(If(dist < 0, distances[i][j] == dist*-1, distances[i][j] == dist))
             s.add(If(dist < 0, distances[j][i] == dist*-1, distances[j][i] == dist))
-            # s.add(distances[j][i] == dist)
 
     knn_indices = [[Int(f'knn_indices_{i}_{j}') for j in range(2)] for i in range(num_points)]
     knn = [[Real(f'knn_{i}_{j}') for j in range(2)] for i in range(num_points)]
@@ -87,45 +87,20 @@ def pairwise_knn(X, contamination):
         s.add(If(_nof[i] < threshold, labels_mat[i] == -1, labels_mat[i] == 1))
 
     if s.check() == sat:
-        # print(s.assertions())
         model = s.model()
-        print("Dataset:")
+        print("Found mismatch when:\n")
+        print("X:")
         X_result = [[model.evaluate(X[i][j]).as_decimal(6) for j in range(1)] for i in range(num_points)]
         print(X_result)
 
-        # distances_result = [[model.evaluate(distances[i][j]).as_decimal(6) for j in range(2)] for i in range(num_points)]
-        # print(distances_result)
-        # knn_result = [[model.evaluate(knn[i][j]).as_decimal(6) for j in range(2)] for i in range(num_points)]
-        # knn_indices_result = [[model.evaluate(knn_indices[i][j]) for j in range(2)] for i in range(num_points)]
-        
-        # print(knn_result)
-        # print(knn_indices_result)
-
-        # dist_k_result = [[model.evaluate(dist_k[i][j]) for j in range(2)] for i in range(num_points)]
-        # print(dist_k_result)
-    
-        # reach_dist_array_result = [[model.evaluate(reach_dist_array[i][j]) for j in range(2)] for i in range(num_points)]
-        # print(reach_dist_array_result)
-
-        # lrd_result = [model.evaluate(_lrd[i]) for i in range(num_points)]
-        # print(lrd_result)
-
-        # lrd_ratios_array_result = [[model.evaluate(lrd_ratios_array[i][j]) for j in range(2)] for i in range(num_points)]
-        # print(lrd_ratios_array_result)
-
-        # nof_result = [model.evaluate(_nof[i]) for i in range(num_points)]
-        # print(nof_result)
-
         labels_sk_result = [model.evaluate(labels_sk[i]) for i in range(num_points)]
-        print(labels_sk_result)
+        print("Sklearn Labels:", labels_sk_result)
 
         labels_mat_result = [model.evaluate(labels_mat[i]) for i in range(num_points)]
-        print(labels_mat_result)
+        print("Matrix Labels:", labels_mat_result)
 
     else:
-        print("No solution found.")
+        print("Unsatisfiable")
 
-X = [[1], [3], [100], [4]]
-k = 2
 
-pairwise_knn(X, 0.1)
+pairwise_knn()

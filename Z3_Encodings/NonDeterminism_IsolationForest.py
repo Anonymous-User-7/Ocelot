@@ -1,68 +1,133 @@
 from z3 import *
+import math
+import time
 
+def anomaly_score_z3(depth):
+    return z3.If(depth == 1, z3.RealVal(0.7423985733387842),
+           z3.If(depth == 2, z3.RealVal(0.5511556416954622),
+           z3.If(depth == 3, z3.RealVal(0.4097585729429775),
+           z3.If(depth == 4, z3.RealVal(0.3048920087278228),
+           z3.If(depth == 5, z3.RealVal(0.2265243785653549),
+           z3.If(depth == 6, z3.RealVal(0.1682348623622597),
+           z3.If(depth == 7, z3.RealVal(0.1249373344214755),
+           z3.If(depth == 8, z3.RealVal(0.0928132445006321),
+           z3.If(depth == 9, z3.RealVal(0.0689444601177059),
+           z3.If(depth == 10, z3.RealVal(0.0510730562630968),
+           z3.If(depth == 11, z3.RealVal(0.0374180516351947),
+           z3.If(depth == 12, z3.RealVal(0.0274543773485814),
+           z3.If(depth == 13, z3.RealVal(0.0200540047223769),
+           z3.If(depth == 14, z3.RealVal(0.0144155958754794),
+           z3.If(depth == 15, z3.RealVal(0.0103640667325619), 
+                z3.RealVal(-1))))))))))))))))
 
-def IF(rows, columns, n_trees):
+def IF(rows):
     solver = Solver()
 
     X = [Real(f'X_{i}') for i in range(rows)]
-    for i in range(rows):
-        solver.add(X[i] >= 1, X[i] <= 10)
-    solver.add(X[1] != X[2])
+    solver.add(X[0] > 0)
+    for i in range(rows - 1):
+        solver.add(X[i] < X[i + 1])
 
+    thr = [Real(f'thr_{i}') for i in range(rows-1)]
+    for i in range(rows - 1):
+        solver.add(thr[i] > X[i], thr[i] < X[i + 1])
+    
+    """ Run 1"""
+    split_thr1 = [[Real(f'split_thr1_{i}_{j}') for i in range(rows)] for j in range(rows-1)]
+    depth_run_1 = [[Int(f'depth_run_1_{i}_{j}') for i in range(rows)] for j in range(rows-1)]
 
-    Rank1 = [[Int(f'Rank1_{i}_{it}') for it in range(n_trees)] for i in range(rows)]
-    Rank2 = [[Int(f'Rank2_{i}_{it}') for it in range(n_trees)] for i in range(rows)]
-    rank_accumulated1 = [Int(f'Rank_accumulated1_{i}') for i in range(rows)]
-    rank_accumulated2 = [Int(f'Rank_accumulated2_{i}') for i in range(rows)]
+    iter = 0
+    for j in range(rows - 1):
+        if iter == 0:
+            for i in range(rows):
+                solver.add(If(X[i] < thr[j], split_thr1[iter][i] == -1*thr[j], split_thr1[iter][i] == thr[j]))
+                solver.add(If(X[i] < thr[j], depth_run_1[iter][i] == 1, depth_run_1[iter][i] == 1))
 
-    for i in range(rows):
-        for it in range(n_trees):
-            solver.add(Rank1[i][it] == 0)
-            solver.add(Rank2[i][it] == 0)
-
-    for it in range(n_trees):
-        solver.push()
-        thr1 = [Real(f'thr1_{i}_{it}') for i in range(rows-1)]
-        thr2 = [Real(f'thr2_{i}_{it}') for i in range(rows-1)]
-        for j in range(rows-1):
-            solver.add(thr1[j] >= 1, thr1[j] <= 9)
-            solver.add(thr2[j] >= 1, thr2[j] <= 9)
-
+            iter+=1
+            continue
+        
+        min_t_if_chain = X[0]
+        for i in range(1, rows):
+            min_t_if_chain = If(And(X[i] < thr[j], X[i] >= min_t_if_chain), X[i], min_t_if_chain)
+        min_t = Real(f'min_t_{iter}')
+        solver.add(min_t == min_t_if_chain)
+        
+        min_value = Real(f"min_value_{iter}")
         for i in range(rows):
-            rank_expr1 = Sum([If(X[i] > thr1[j], 1, -1) for j in range(rows-1)])
-            rank_expr2 = Sum([If(X[i] > thr2[j], 1, -1) for j in range(rows-1)])
-            updated_rank1 = Int(f'Updated_Rank_Expr1_{i}_{it}')
-            updated_rank2 = Int(f'Updated_Rank_Expr2_{i}_{it}')
-            solver.add(updated_rank1 == Rank1[i][it] + rank_expr2)
-            solver.add(updated_rank2 == Rank2[i][it] + rank_expr2)
-            Rank1[i][it] = updated_rank1
-            Rank2[i][it] = updated_rank2
+            solver.add(Implies(X[i] == min_t, min_value == split_thr1[iter-1][i]))
+        for i in range(rows):
+            solver.add(split_thr1[iter][i] == If(X[i] < thr[j], 
+                                            If(min_value == split_thr1[iter-1][i], -1*thr[j], split_thr1[iter-1][i]), 
+                                            If(min_value == split_thr1[iter-1][i], thr[j], split_thr1[iter-1][i])))
+            solver.add(depth_run_1[iter][i] == If(X[i] < thr[j], 
+                                            If(min_value == split_thr1[iter-1][i], depth_run_1[iter-1][i]+1, depth_run_1[iter-1][i]), 
+                                            If(min_value == split_thr1[iter-1][i], depth_run_1[iter-1][i]+1, depth_run_1[iter-1][i])))
+        iter += 1
 
-        solver.pop()
-
+    depth_1 = depth_run_1[-1]
+    inlier_r1 = [Int(f'inlier_r1_{i}') for i in range(rows)]
     for i in range(rows):
-        solver.add(rank_accumulated1[i] == sum([Rank1[i][it] for it in range(n_trees)]))
-        solver.add(rank_accumulated2[i] == sum([Rank2[i][it] for it in range(n_trees)]))
+        solver.add(If(anomaly_score_z3(depth_run_1[-1][i]) > 0.5, inlier_r1[i] == -1, inlier_r1[i] == 1))
+
+    """ Run 2"""
+    split_thr2 = [[Real(f'split_thr2_{i}_{j}') for i in range(rows)] for j in range(rows-1)]
+    depth_run_2 = [[Int(f'depth_run_2_{i}_{j}') for i in range(rows)] for j in range(rows-1)]
+
+    iter = 0
+    for j in range(rows - 2, -1, -1):
+        if iter == 0:
+            for i in range(rows):
+                solver.add(If(X[i] < thr[j], split_thr2[iter][i] == -1*thr[j], split_thr2[iter][i] == thr[j]))
+                solver.add(If(X[i] < thr[j], depth_run_2[iter][i] == 1, depth_run_2[iter][i] == 1))
+
+            iter+=1
+            continue
+        
+        min_t_if_chain = X[0]
+        for i in range(1, rows):
+            min_t_if_chain = If(And(X[i] < thr[j], X[i] >= min_t_if_chain), X[i], min_t_if_chain)
+        min_t = Real(f'min_t_2_{iter}')
+        solver.add(min_t == min_t_if_chain)
+        
+        min_value = Real(f"min_value_2_{iter}")
+        for i in range(rows):
+            solver.add(Implies(X[i] == min_t, min_value == split_thr2[iter-1][i]))
+        for i in range(rows):
+            solver.add(split_thr2[iter][i] == If(X[i] < thr[j], 
+                                            If(min_value == split_thr2[iter-1][i], -1*thr[j], split_thr2[iter-1][i]), 
+                                            If(min_value == split_thr2[iter-1][i], thr[j], split_thr2[iter-1][i])))
+            solver.add(depth_run_2[iter][i] == If(X[i] < thr[j], 
+                                            If(min_value == split_thr2[iter-1][i], depth_run_2[iter-1][i]+1, depth_run_2[iter-1][i]), 
+                                            If(min_value == split_thr2[iter-1][i], depth_run_2[iter-1][i]+1, depth_run_2[iter-1][i])))
+        iter += 1
+
+    inlier_r2 = [Int(f'inlier_r2_{i}') for i in range(rows)]
+    for i in range(rows):
+        solver.add(If(anomaly_score_z3(depth_run_2[-1][i]) > 0.5, inlier_r2[i] == -1, inlier_r2[i] == 1))
 
 
-    solver.push()
-    solver.add(Or([rank_accumulated1[i] != rank_accumulated2[i] for i in range(rows)]))
+
+
+    solver.add(Or([inlier_r1[i] != inlier_r2[i] for i in range(rows)]))
 
     if solver.check() == sat:
         model = solver.model()
-        print("X Values:")
-        for i in range(rows):
-            print(f"  X[{i}] = {model[X[i]]}")
-
-        print("Run 1 Results:")
-        for i in range(rows):
-            print(f"  Rank[{i}] = {model[rank_accumulated1[i]]}")
+    
+        print("Found mismatch when:\n")
+        X_result = [model[x].as_decimal(3) for x in X]
+        print("X:", X_result)
         
-        print("Run 2 Results:")
-        for i in range(rows):
-            print(f"  Rank[{i}] = {model[rank_accumulated2[i]]}")
-    else:
-        print("False")
-    solver.pop()
+        thr_result = [model[t].as_decimal(3) for t in thr]
+        print("thr:", thr_result)
 
-IF(4, 1, 10)
+        print("\nResult:\n")
+        inlier_r1_result = [model[a] for a in inlier_r1]
+        print("V1 Inlier:", inlier_r1_result)          
+        
+        inlier_r2_result = [model[a] for a in inlier_r2]
+        print("V2 Inlier:", inlier_r2_result)
+    else:
+        print("No solution")
+
+
+IF(5)

@@ -13,7 +13,7 @@ def Min(values):
     else:
         return If(values[0] < Min(values[1:]), values[0], Min(values[1:]))
 
-def pairwise_knn(X):
+def pairwise_knn():
     s = Solver()
     n_samples = 4
     X = [[Real(f'X_{i}_{j}') for j in range(1)] for i in range(n_samples)]
@@ -95,19 +95,19 @@ def pairwise_knn(X):
 
     if s.check() == sat:
         model = s.model()
-        print("Dataset:")
+        print("Found mismatch when:\n")
+        print("X:")
         X_result = [[model.evaluate(X[i][j]).as_decimal(6) for j in range(1)] for i in range(n_samples)]
         print(X_result)
-
+        print()
+        print("LOF Values:")
         lof_v1_result = [model.evaluate(lof_v1[i]) for i in range(n_samples)]
-        print(lof_v1_result)
+        print("V1:", lof_v1_result)
 
         lof_v2_result = [model.evaluate(lof_v2[i]) for i in range(n_samples)]
-        print(lof_v2_result)
+        print("V2:", lof_v2_result)
 
     else:
         print("No solution found.")
 
-k = 2 
-
-pairwise_knn(X)
+pairwise_knn()

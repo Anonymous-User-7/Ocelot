@@ -69,6 +69,7 @@ def main():
     s.add(Or([labels1[i] != labels2[i] for i in range(n_samples)]))
 
     if s.check() == sat:
+        print("Found mismatch when:\n")
         m = s.model()
         print("X")
         for i in range(n_samples):

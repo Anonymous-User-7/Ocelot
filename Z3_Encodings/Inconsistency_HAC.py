@@ -19,11 +19,9 @@ def ward_distance(data, id1, id2, iter2=True):
 
 
 def HAC(n=4):
-    # n = 4
     d = 2
     k = 2
     data_points = [[Real(f'x_{i}_{j}') for j in range(d)] for i in range(n)]
-    # clusters = [Real(f'clusters_{i}') for i in range(n)]
     distance = [[Real(f'distance_{i}_{j}') for j in range(n)] for i in range(n)]
     s = Solver()
     
@@ -87,32 +85,22 @@ def HAC(n=4):
 
     if s.check() == sat:
         m = s.model()
-        print(s.assertions())
-
-        print("Data Points:")
+        print("Found mismatch when:\n")
+        print("X:")
         result_X = np.array([[m.evaluate(data_points[i][j]).as_decimal(5) for j in range(d)] for i in range(n)])
         print(result_X)
 
-        print("\nDistance:")
+        print("\nResult:")
+        print("\nDistance Matrix Single:")
         result_dist = np.array([[m.evaluate(distance[i][j]).as_decimal(5) for j in range(n)] for i in range(n)])
         print(result_dist)
 
-        print("\n data_ward:")
-        result_dist = np.array([[m.evaluate(data_ward[i][j]).as_decimal(5) for j in range(d)] for i in range(n-1)])
-        print(result_dist)
-
-        print("\nDistance Matrix ward:")
+        print("\nDistance Matrix Ward:")
         result_dist = np.array([[m.evaluate(distance_ward[i][j]).as_decimal(5) for j in range(n-1)] for i in range(n-1)])
         print(result_dist)
 
 
     else:
-        print("Unsat")
+        print("Unsatisfiable")
         
 HAC(4)
-
-# import time
-# for i in range(4,10):
-#     t0 = time.time()
-#     HAC(i)
-#     print(i, time.time()-t0)

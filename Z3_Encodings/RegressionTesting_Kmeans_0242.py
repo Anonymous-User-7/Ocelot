@@ -38,13 +38,14 @@ def main(n_samples, k, n_init=10):
 
         
     s.add(Or([best_labels_v1[n_init-1][i] != best_labels_v2[n_init-1][i] for i in range(n_samples)]))
-    # s.add(best_inertia_v1[n_init-1] != best_inertia_v2[n_init-1])
 
     if s.check() == sat:
         m = s.model()
+        print("Found mismatch when:\n")
         print("Best Inertia V1:", m.evaluate(best_inertia_v1[n_init - 1]))
-        print("Best Labels V1:", [m.evaluate(best_labels_v1[n_init - 1][i]) for i in range(n_samples)])
         print("Best Inertia V2:", m.evaluate(best_inertia_v2[n_init - 1]))
+        print()
+        print("Best Labels V1:", [m.evaluate(best_labels_v1[n_init - 1][i]) for i in range(n_samples)])
         print("Best Labels V2:", [m.evaluate(best_labels_v2[n_init - 1][i]) for i in range(n_samples)])
     else:
         print("Unsatisfiable")

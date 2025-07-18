@@ -24,11 +24,11 @@ def Calcualte_Variance_Mean(X, n_samples, n_features):
     return avg_var
 
 
-n_samples = 10
+n_samples = 5
 n_features = 2 
 k = 2
-# tol=1e-4
-tol = RealVal(0)
+tol = RealVal(1e-4)
+
 
 X = [[Real(f"x_{i}_{j}") for j in range(n_features)] for i in range(n_samples)]
 
@@ -42,16 +42,9 @@ total_shift = Sum([
 
 avg_var = Calcualte_Variance_Mean(X, n_samples, n_features)
 
-# cond1 = And(total_shift < tol, total_shift >= tol * avg_var)
-# cond2 = And(total_shift >= tol, total_shift < tol * avg_var)
-# final_condition = Or(cond1, cond2)
-
 
 solver = Solver()
-# solver.add(avg_var == 2)
-# solver.add(total_shift < tol)
 
-# solver.add(final_condition)
 a = total_shift < tol * avg_var # Initial implementation
 b = total_shift < tol # Edit 1: Sparse matrix support in KMeans. Commit: 5d47ce279042ed0ea9eb33f411b5ec67c40bdde7
 c = total_shift <= tol # Edit 2: Fix bug https://github.com/scikit-learn/scikit-learn/issues/3374 for tol = 0
@@ -62,22 +55,19 @@ solver.add(Xor(b, c)) # True
 
 if solver.check() == sat:
     model = solver.model()
-    print("Solution found:")
-    for i in range(n_samples):
-        row = []
-        for j in range(n_features):
-            row.append(model.evaluate(X[i][j]))
-        print(f"Row {i}: {row}")
-
+    print("Found mismatch when:\n")
+    print("X:")
+    X_w = [[model.evaluate(X[i][j]) for j in range(n_features)] for i in range(n_samples)]
+    print(X_w)
+    
     def eval_expr(expr):
         return simplify(model.evaluate(expr, model_completion=True))
 
     evaluated_avg_var = eval_expr(avg_var)
     print(f"\nEvaluated avg_var: {evaluated_avg_var}")
-    print("total_shift =", model.evaluate(total_shift))
-    for i in range(k):
-        for j in range(n_features):
-            print(f"centers_old[{i}][{j}] = {model.evaluate(centers_old[i][j])}")
-            print(f"centers    [{i}][{j}] = {model.evaluate(centers[i][j])}")
+    print("Total Shift =", model.evaluate(total_shift))
+    print("Centers Old:", [[model.evaluate(centers_old[i][j]) for j in range(n_features)] for i in range(k)])
+    print("Centers New:", [[model.evaluate(centers[i][j]) for j in range(n_features)] for i in range(k)])
+    
 else:
-    print("No solution found.")
+    print("Unsatisfiable")

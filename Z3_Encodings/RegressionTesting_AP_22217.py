@@ -65,9 +65,6 @@ solver = Solver()
 mismatch = Or([labels_old[i] != labels_new[i] for i in range(len(S))])
 solver.add(mismatch)
 
-for c in solver.assertions():
-    print (c)
-
 if solver.check() == sat:
     model = solver.model()
     print("Found mismatch when never_converged =", model[never_converged])

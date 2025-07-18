@@ -1,9 +1,6 @@
 from z3 import *
-import numpy as np # type: ignore
+import numpy as np
 import time
-
-
-
 
 def Max(*args):
     max_val = args[0]
@@ -15,7 +12,6 @@ def Min(*args):
     return If(args[0] < args[1], args[0], args[1])
 
 def funct(n_samples, dimension, max_iter=1, damping=0.5):
-    
     s = Solver()
     X = [[Real(f'x_{i}_{j}') for j in range(dimension)] for i in range(n_samples)]
     
@@ -23,8 +19,6 @@ def funct(n_samples, dimension, max_iter=1, damping=0.5):
     Sdist = [[Real(f'Sdist_{i}_{j}') for j in range(n_samples)] for i in range(n_samples)]
     S1 = [[Real(f'S1_{i}_{j}') for j in range(n_samples)] for i in range(n_samples)]
     S2 = [[Real(f'S2_{i}_{j}') for j in range(n_samples)] for i in range(n_samples)]
-    # noise1 = [[Real(f'noise1_{i}_{j}') for j in range(n_samples)] for i in range(n_samples)]
-    # noise2 = [[Real(f'noise2_{i}_{j}') for j in range(n_samples)] for i in range(n_samples)]
 
     for i in range(n_samples):
         for j in range(n_samples):
@@ -32,22 +26,12 @@ def funct(n_samples, dimension, max_iter=1, damping=0.5):
 
     for i in range(n_samples):
         for j in range(n_samples):
-            # s.add(Or(noise1[i][j] == (2.220446049250313e-16 * Sdist[i][j] + 2.2250738585072014e-308 * 100) * -6, noise1[i][j] == (2.220446049250313e-16 * Sdist[i][j] + 2.2250738585072014e-308 * 100) * 6))
-            # s.add(Or(noise2[i][j] == (2.220446049250313e-16 * Sdist[i][j] + 2.2250738585072014e-308 * 100) * -6, noise2[i][j] == (2.220446049250313e-16 * Sdist[i][j] + 2.2250738585072014e-308 * 100) * 6))
-            # s.add(Or(noise1[i][j] == -0.6, noise1[i][j] == 0.6))
-            # s.add(Or(noise2[i][j] == -0.00006, noise2[i][j] == 0.00006))
-            
             if i != j:
                 s.add(S1[i][j] == -1*Sum([(X[i][k] - X[j][k])**2 for k in range(dimension)]) + (2.220446049250313e-16 * Sdist[i][j] + 2.2250738585072014e-308 * 100) * 6)
                 s.add(S2[i][j] == -1*Sum([(X[i][k] - X[j][k])**2 for k in range(dimension)]) - (2.220446049250313e-16 * Sdist[i][j] + 2.2250738585072014e-308 * 100) * 6)
-                # s.add(S1[i][j] == -1*Sum([(X[i][k] - X[j][k])**2 for k in range(dimension)]) + noise1[i][j])
-                # s.add(S2[i][j] == -1*Sum([(X[i][k] - X[j][k])**2 for k in range(dimension)]) + noise2[i][j])
             else:
-                # s.add(S1[i][j] == preference + noise1[i][j])
-                # s.add(S2[i][j] == preference + noise2[i][j])
                 s.add(S1[i][j] == preference + (2.220446049250313e-16 * Sdist[i][j] + 2.2250738585072014e-308 * 100) * 6)
                 s.add(S2[i][j] == preference - (2.220446049250313e-16 * Sdist[i][j] + 2.2250738585072014e-308 * 100) * 6)
-                
             
     A1 = [[[Real(f'A1_{i}_{j}_{iter}') for j in range(n_samples)] for i in range(n_samples)] for iter in range(max_iter+1)]
     A2 = [[[Real(f'A2_{i}_{j}_{iter}') for j in range(n_samples)] for i in range(n_samples)] for iter in range(max_iter+1)]
@@ -95,25 +79,22 @@ def funct(n_samples, dimension, max_iter=1, damping=0.5):
 
         s.add(Or([exemplars1[i] != exemplars2[i] for i in range(n_samples)]))
         if s.check() == sat:
-            # print("Constraints:")
-            # for constraint in s.assertions():
-            #     print(constraint)
             print(f"Iteration {iteration + 1}: Exemplars are different.")
+            print("Found mismatch when:\n")
             m = s.model()
             result_X = np.array([[m.evaluate(X[i][j]).as_decimal(5) for j in range(dimension)] for i in range(n_samples)])
             print("X:")
             print(result_X)
+            print("\nResult:\n")
             exemplars1_values = [i for i in range(n_samples) if m.eval(exemplars1[i])]
             exemplars2_values = [i for i in range(n_samples) if m.eval(exemplars2[i])]
-            print(f"Exemplars 1: {exemplars1_values}")
-            print(f"Exemplars 2: {exemplars2_values}")
+            print(f"V1 Exemplars: {exemplars1_values}")
+            print(f"V2 Exemplars: {exemplars2_values}")
             break
         else:
             print(f"Iteration {iteration + 1}: Exemplars are the same.")
         s.pop()
         
-
-
 t0 = time.time()
 funct(3, 2, max_iter=20)
 print(time.time()-t0)

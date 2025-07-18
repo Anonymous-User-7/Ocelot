@@ -1,11 +1,10 @@
 from z3 import *
-import numpy as np # type: ignore
+import numpy as np
 import random
 
 
-def kmeans():
+def kmeans(num_points):
     solver = Solver()
-    num_points = 4
     num_features = 1
     num_clusters = 2
     max_iter = 1
@@ -33,17 +32,14 @@ def kmeans():
             # Sklearn
             distance1_c1 = Sum([(data[i][f] - centroids_1[0][f]) ** 2 for f in range(num_features)])
             distance1_c2 = Sum([(data[i][f] - centroids_1[1][f]) ** 2 for f in range(num_features)])
-            # solver.add(If(distance1_c1 > distance1_c2, labels1_new[i] == 0, labels1_new[i] == 1))
             solver.add(Implies(distance1_c1 > distance1_c2, labels1_new[i] == 0))
             solver.add(Implies(distance1_c1 <= distance1_c2, labels1_new[i] == 1))
             
             # R
             distance2_c1 = Sum([(data[i][f] - centroids_2[0][f]) ** 2 for f in range(num_features)])
             distance2_c2 = Sum([(data[i][f] - centroids_2[1][f]) ** 2 for f in range(num_features)])
-            # solver.add(If(distance2_c1 > distance2_c2, labels2_new[i] == 0, labels2_new[i] == 1))
             solver.add(Implies(distance2_c1 >= distance2_c2, labels2_new[i] == 0))
             solver.add(Implies(distance2_c1 < distance2_c2, labels2_new[i] == 1))
-            # solver.add(Implies(distance2_c1 == distance2_c2, labels2_new[i] == labels2[i]))
 
         centroids_1_new = [[Real(f'c1_{j}_{f}_{iter}') for f in range(num_features)] for j in range(num_clusters)]
         centroids_2_new = [[Real(f'c2_{j}_{f}_{iter}') for f in range(num_features)] for j in range(num_clusters)]
@@ -66,33 +62,31 @@ def kmeans():
 
     if solver.check() == sat:
         model = solver.model()
-        result_labels1 = [model[label].as_long() for label in labels1]
-        result_labels2 = [model[label].as_long() for label in labels2]
-        print("Cluster labels1:", result_labels1)
-        print("Cluster labels2:", result_labels2)
+        
+        print("Found mismatch when:\n")
+        
         dataset = []
         centers = []
         for i in range(num_points):
-            point = [float(model[data[i][j]].as_decimal(10)) for j in range(num_features)]  # Convert RatNumRef to float
+            point = [float(model[data[i][j]].as_decimal(10)) for j in range(num_features)]
             dataset.append(point)
-            print(f"Data point {i}: {point}")
-        print("Centers")
         for i in range(num_clusters):
-            center = [float(model[centroids_init[i][j]].as_decimal(10)) for j in range(num_features)]  # Convert RatNumRef to float
+            center = [float(model[centroids_init[i][j]].as_decimal(10)) for j in range(num_features)]
             centers.append(center)
-            print(f"{i}: {point}")
+        print("X:")
+        print(dataset)
+        print("Centers:")
+        print(centers)
 
-        # from sklearn.cluster import KMeans
-        # kmeans = KMeans(n_clusters=2, init=centers, n_init=1, random_state=42)
-        # kmeans.fit(dataset)
-        # print(kmeans.labels_)
-
+        print("\nResult:\n")
+        result_labels1 = [model[label].as_long() for label in labels1]
+        result_labels2 = [model[label].as_long() for label in labels2]
+        print("V1 Cluster labels:", result_labels1)
+        print("V2 Cluster labels:", result_labels2)
     else:
-        print("False.")
+        print("Unsatisfiable")
 
-
-
-kmeans()
+kmeans(4)
 
     
     

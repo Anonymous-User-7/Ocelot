@@ -21,8 +21,7 @@ def anomaly_score_z3(depth):
 
 
 
-def IF():
-    rows = 5
+def IF(rows):
     solver = Solver()
 
     X = [Real(f'X_{i}') for i in range(rows)]
@@ -40,7 +39,6 @@ def IF():
 
     iter = 0
     for j in range(rows - 1):
-    # for j in range(rows - 2, -1, -1):
         if iter == 0:
             for i in range(rows):
                 solver.add(If(X[i] < thr[j], split_thr1[iter][i] == -1*thr[j], split_thr1[iter][i] == thr[j]))
@@ -78,7 +76,6 @@ def IF():
 
     iter = 0
     for j in range(rows - 1):
-    # for j in range(rows - 2, -1, -1):
         if iter == 0:
             for i in range(rows):
                 solver.add(If(X[i] < thr[j], split_thr2[iter][i] == -1*thr[j], split_thr2[iter][i] == thr[j]))
@@ -120,36 +117,21 @@ def IF():
         model = solver.model()
         
         X_result = [model[x].as_decimal(3) for x in X]
+        print("Found mismatch when:\n")
         print("X:", X_result)
         
         thr_result = [model[t].as_decimal(3) for t in thr]
         print("thr:", thr_result)
         
-        split_thr1_result = [[model[split_thr1[j][i]].as_decimal(3) for i in range(rows)] for j in range(rows-1)]
-        print(split_thr1_result)
-
-        depth_run_1_result = [[model[depth_run_1[j][i]] for i in range(rows)] for j in range(rows-1)]
-        print(depth_run_1_result)
-
-        # depth_1_result = [model[s1].as_long() for s1 in depth_1]
-        # print("Depth 1:", depth_1_result)      
-
-        # depth_2_result = [model[s2].as_long() for s2 in depth_2]
-        # print("Depth 1:", depth_2_result)
-
-        anomaly_score_r2_result = [model[s1].as_decimal(3) for s1 in anomaly_score_r2]
-        print("Score:", anomaly_score_r2_result)
-
-        # anomaly_score_r2_sorted_result = [model[s1].as_decimal(3) for s1 in anomaly_score_r2_sorted]
-        # print("Sorted:", anomaly_score_r2_sorted_result)
+        print("\nResult:\n")
 
         inlier_r1_result = [model[a] for a in inlier_r1]
-        print("inlier_r1:", inlier_r1_result)
+        print("V1 Inlier:", inlier_r1_result)
         
         inlier_r2_result = [model[a] for a in inlier_r2]
-        print("inlier_r2:", inlier_r2_result)
+        print("V2 Inlier:", inlier_r2_result)
     else:
-        print("No solution")
+        print("Unsatisfiable")
 
-IF()
+IF(5)
 
