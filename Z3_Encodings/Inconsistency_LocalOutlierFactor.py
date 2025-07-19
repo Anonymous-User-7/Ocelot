@@ -8,9 +8,10 @@ def Min(values):
         return If(values[0] < Min(values[1:]), values[0], Min(values[1:]))
 
 def pairwise_knn():
-    s = Solver()
     num_points = 4
     contamination = 0.1
+    
+    s = Solver()
     X = [[Real(f'X_{i}_{j}') for j in range(1)] for i in range(num_points)]
     for i in range(num_points):
         for j in range(1):
@@ -19,13 +20,11 @@ def pairwise_knn():
     distances = [[Real(f'distance_{i}_{j}') for j in range(num_points)] for i in range(num_points)]
 
     for i in range(num_points):
-        s.add(distances[i][i] == 9999)
-        for j in range(i + 1, num_points):
-            dist = (X[i][0] - X[j][0])
-            
-            s.add(If(dist < 0, distances[i][j] == dist*-1, distances[i][j] == dist))
-            s.add(If(dist < 0, distances[j][i] == dist*-1, distances[j][i] == dist))
-
+        s.add(distances[i][i] == 2147483647)
+        for j in range(i + 1, num_points):            
+            s.add(If(X[i][0]>X[j][0], distances[i][j] == X[i][0]-X[j][0], distances[i][j] == X[j][0]-X[i][0]))
+            s.add(distances[i][j] == distances[j][i])
+    
     knn_indices = [[Int(f'knn_indices_{i}_{j}') for j in range(2)] for i in range(num_points)]
     knn = [[Real(f'knn_{i}_{j}') for j in range(2)] for i in range(num_points)]
 
@@ -46,6 +45,7 @@ def pairwise_knn():
         for j in range(num_points):
             s.add(Implies(knn[i][0] == distances[i][j], knn_indices[i][0] == j))
             s.add(Implies(knn[i][1] == distances[i][j], knn_indices[i][1] == j))
+
         
     dist_k = [[Real(f'dist_k_{i}_{j}') for j in range(2)] for i in range(num_points)]
     for i in range(num_points):
@@ -78,13 +78,15 @@ def pairwise_knn():
     labels_mat = [Int(f'labels_mat_{i}') for i in range(num_points)]
 
     for i in range(num_points):
-        s.add(If(_nof[i] < -1.5, labels_sk[i] == -1, labels_sk[i] == 1))
-    s.add(Or([labels_sk[i] == -1 for i in range(4)]))
+        s.add(If(_nof[i] < -1.5, labels_sk[i] == 0, labels_sk[i] == 1))
 
     threshold = Real('threshold')
-    s.add(If(contamination < 0.25, threshold == Min(_nof), threshold == -1.5))
+
     for i in range(num_points):
-        s.add(If(_nof[i] < threshold, labels_mat[i] == -1, labels_mat[i] == 1))
+        s.add(If(_nof[i] < threshold, labels_mat[i] == 0, labels_mat[i] == 1))
+    s.add(Sum(labels_mat) == (num_points - int(num_points*contamination)))
+
+    s.add(Or([labels_sk[i] != labels_mat[i] for i in range(num_points)]))
 
     if s.check() == sat:
         model = s.model()
@@ -97,7 +99,7 @@ def pairwise_knn():
         print("Sklearn Labels:", labels_sk_result)
 
         labels_mat_result = [model.evaluate(labels_mat[i]) for i in range(num_points)]
-        print("Matrix Labels:", labels_mat_result)
+        print("MATLAB Labels:", labels_mat_result)
 
     else:
         print("Unsatisfiable")
